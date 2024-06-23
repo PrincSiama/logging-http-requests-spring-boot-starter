@@ -12,5 +12,5 @@ import org.springframework.stereotype.Component;
 public class LoggingStarterProperties {
 
     private boolean enable;
-    private String level;
+    private String level = "INFO";
 }
