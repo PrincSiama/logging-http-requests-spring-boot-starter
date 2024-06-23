@@ -1,10 +1,12 @@
 package dev.sosnovsky.interceptor;
 
+import dev.sosnovsky.configuration.LoggingStarterProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.event.Level;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -18,13 +20,14 @@ import java.util.Map;
 @AllArgsConstructor
 public class LoggingInterceptor implements HandlerInterceptor {
 
-    private String level;
+    @Autowired
+    private final LoggingStarterProperties properties;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
                              Object handler) {
         request.setAttribute("startTime", Instant.now());
-        log.atLevel(Level.valueOf(level)).log("Запрос: Метод: {}, URL: {}, Заголовки: {}",
+        log.atLevel(Level.valueOf(properties.getLevel())).log("Запрос: Метод: {}, URL: {}, Заголовки: {}",
                 request.getMethod(), request.getRequestURL(), getHeaders(request));
         return true;
     }
@@ -34,7 +37,7 @@ public class LoggingInterceptor implements HandlerInterceptor {
                                 Object handler, Exception ex) {
         Instant startTime = (Instant) request.getAttribute("startTime");
         long duration = Instant.now().toEpochMilli() - startTime.toEpochMilli();
-        log.atLevel(Level.valueOf(level))
+        log.atLevel(Level.valueOf(properties.getLevel()))
                 .log("Ответ: Статус: {}, Время выполнения: {} ms, Заголовки: {}",
                         response.getStatus(), duration, getHeaders(response));
     }

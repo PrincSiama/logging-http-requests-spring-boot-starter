@@ -2,22 +2,31 @@ package dev.sosnovsky.configuration;
 
 import dev.sosnovsky.interceptor.LoggingInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @AutoConfiguration
 @EnableConfigurationProperties(LoggingStarterProperties.class)
-//@ConditionalOnProperty(prefix = "logging.http", value = "enable", havingValue = "true")
+@ConditionalOnProperty(prefix = "logging.http", value = "enable", havingValue = "true", matchIfMissing = false)
 public class LoggingStarterAutoConfig {
 
     @Bean
-//    @ConditionalOnProperty(prefix = "logging.http", value = "level")
     public LoggingInterceptor loggingInterceptor(LoggingStarterProperties properties) {
-        return new LoggingInterceptor(properties.getLevel());
+        return new LoggingInterceptor(properties);
     }
 
     @Bean
-    public WebConfig webConfig(LoggingInterceptor loggingInterceptor) {
-        return new WebConfig(loggingInterceptor);
+    @ConditionalOnBean(name = "loggingInterceptor")
+    public WebMvcConfigurer webMvcConfigurer(LoggingInterceptor loggingInterceptor) {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addInterceptors(InterceptorRegistry registry) {
+                registry.addInterceptor(loggingInterceptor);
+            }
+        };
     }
 }

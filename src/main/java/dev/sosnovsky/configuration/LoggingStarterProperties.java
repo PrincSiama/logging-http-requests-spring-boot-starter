@@ -6,10 +6,11 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 @Data
-@Primary
 @Component
+@Primary
 @ConfigurationProperties(prefix = "logging.http")
 public class LoggingStarterProperties {
 
+    private boolean enable;
     private String level;
 }
