@@ -3,11 +3,9 @@ package dev.sosnovsky.interceptor;
 import dev.sosnovsky.configuration.LoggingStarterProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.event.Level;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.slf4j.spi.LoggingEventBuilder;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.time.Instant;
@@ -16,30 +14,49 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-@Component
-@AllArgsConstructor
 public class LoggingInterceptor implements HandlerInterceptor {
 
-    @Autowired
     private final LoggingStarterProperties properties;
+
+    private final LoggingEventBuilder loggingEventBuilder;
+
+    public LoggingInterceptor(LoggingStarterProperties properties) {
+        this.properties = properties;
+        loggingEventBuilder = log.atLevel(Level.valueOf(properties.getLevel()));
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
                              Object handler) {
-        request.setAttribute("startTime", Instant.now());
-        log.atLevel(Level.valueOf(properties.getLevel())).log("Запрос: Метод: {}, URL: {}, Заголовки: {}",
-                request.getMethod(), request.getRequestURL(), getHeaders(request));
+        try {
+            request.setAttribute("startTime", Instant.now());
+            loggingEventBuilder.log(
+                    "Запрос: Метод: " + request.getMethod() +
+                            ", URL: " + request.getRequestURL());
+            if (properties.isHeaders()) {
+                loggingEventBuilder.log("Заголовки: " + getHeaders(request));
+            }
+        } catch (Exception e) {
+            log.warn("Не удалось логировать запрос, {}", e.getMessage());
+        }
         return true;
     }
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
-        Instant startTime = (Instant) request.getAttribute("startTime");
-        long duration = Instant.now().toEpochMilli() - startTime.toEpochMilli();
-        log.atLevel(Level.valueOf(properties.getLevel()))
-                .log("Ответ: Статус: {}, Время выполнения: {} ms, Заголовки: {}",
-                        response.getStatus(), duration, getHeaders(response));
+        try {
+            Instant startTime = (Instant) request.getAttribute("startTime");
+            long duration = Instant.now().toEpochMilli() - startTime.toEpochMilli();
+            loggingEventBuilder.log(
+                    "Ответ: Статус: " + response.getStatus() +
+                            ", Время выполнения: " + duration + " ms");
+            if (properties.isHeaders()) {
+                loggingEventBuilder.log("Заголовки: " + getHeaders(response));
+            }
+        } catch (Exception e) {
+            log.warn("Не удалось логировать ответ, {}", e.getMessage());
+        }
     }
 
     private String getHeaders(HttpServletRequest request) {
